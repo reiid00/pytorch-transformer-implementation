@@ -22,6 +22,13 @@ class Transformer(nn.Module):
         # final layer to generate output probabilities
         self.generator = nn.Linear(d_model, tgt_vocab_size)
 
+        self.__init__params_xavier()
+    
+    def __init__params_xavier(self):
+        for _, p in self.named_parameters():
+            if p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
     def encode(self, src, src_mask):
         # Apply the input embedding and positional encoding
         src_emb = self.encoder_embedding(src)
