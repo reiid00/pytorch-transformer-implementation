@@ -55,26 +55,6 @@ def batch_to_tensor(batch, pad_idx, device):
 
     return tensor
 
-# This function may need some changes
-def preprocess_text(text):
-    text = text.lower()
-    text = re.sub(r'[^a-z0-9]+', ' ', text)
-    return text.strip().split()
-
-
-# This function may need some changes
-def process_dataset(dataset, src_vocab, tgt_vocab, max_len):
-    processed_data = []
-    for src, tgt in dataset:
-        src = [src_vocab.stoi[token] for token in src if token in src_vocab.stoi]
-        tgt = [tgt_vocab.stoi[token] for token in tgt if token in tgt_vocab.stoi]
-
-        if len(src) > max_len or len(tgt) > max_len:
-            continue
-
-        processed_data.append((src, tgt))
-
-    return processed_data
 
 def save_checkpoint(model, optimizer, scheduler, epoch, path):
     torch.save({
