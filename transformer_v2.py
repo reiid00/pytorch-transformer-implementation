@@ -28,6 +28,16 @@ class Transformer(nn.Module):
         for _, p in self.named_parameters():
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
+            
+    @property
+    def attention_weights(self):
+        encoder_weights = [layer.self_attn.attention_weights for layer in self.encoder.layers]
+        decoder_self_weights = [layer.self_attn.attention_weights for layer in self.decoder.layers]
+        decoder_enc_dec_weights = [layer.enc_dec_attn.attention_weights for layer in self.decoder.layers]
+        
+        return {"encoder": encoder_weights,
+                "decoder_self": decoder_self_weights,
+                "decoder_enc_dec": decoder_enc_dec_weights}
 
     def encode(self, src, src_mask):
         # Apply the input embedding and positional encoding
@@ -76,8 +86,8 @@ class Transformer(nn.Module):
 class DecoderLayer(nn.Module):
     def __init__(self, d_model, num_heads, d_ff, dropout=0.1):
         super(DecoderLayer, self).__init__()
-        self.self_attn = MultiHeadAttention(d_model, num_heads)
-        self.cross_attn = MultiHeadAttention(d_model, num_heads)
+        self.self_attn = MultiHeadAttention(d_model, num_heads, store_attention_weights=True)
+        self.cross_attn = MultiHeadAttention(d_model, num_heads, store_attention_weights=True)
         self.feed_forward = PositionwiseFeedForward(d_model, d_ff)
         self.layer_norm1 = nn.LayerNorm(d_model)
         self.layer_norm2 = nn.LayerNorm(d_model)
@@ -120,7 +130,7 @@ class DecoderLayer(nn.Module):
 class EncoderLayer(nn.Module):
     def __init__(self, d_model, num_heads, d_ff, dropout=0.1):
         super(EncoderLayer, self).__init__()
-        self.self_attn = MultiHeadAttention(d_model, num_heads)
+        self.self_attn = MultiHeadAttention(d_model, num_heads, store_attention_weights=True)
         self.feed_forward = PositionwiseFeedForward(d_model, d_ff)
         self.layer_norm1 = nn.LayerNorm(d_model)
         self.layer_norm2 = nn.LayerNorm(d_model)
@@ -152,9 +162,10 @@ class EncoderLayer(nn.Module):
         return x, attn_weights
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, d_model, num_heads, dropout=0.1):
+    def __init__(self, d_model, num_heads, dropout=0.1,store_attention_weights=False):
         super(MultiHeadAttention, self).__init__()
         assert d_model % num_heads == 0
+        self.store_attention_weights = store_attention_weights
 
         self.d_k = d_model // num_heads # Dimensions of keys (which will be equal to queries and values)
         self.num_heads = num_heads
@@ -233,6 +244,9 @@ class MultiHeadAttention(nn.Module):
 
         # Perform scaled dot-product attention
         attn_output, attn_weights = self.scaled_dot_product_attention(q, k, v, mask)
+
+        if self.store_attention_weights:
+            self.attention_weights = attn_weights.clone()
 
         # Concatenate the multi-head outputs
         attn_output = attn_output.transpose(1, 2).contiguous().view(batch_size, -1, self.num_heads * self.d_k)

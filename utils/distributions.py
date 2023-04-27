@@ -9,7 +9,7 @@ import torch.nn as nn
 
 # Paper value for label_smoothing: 0.1
 class LabelSmoothingKLDivergenceLoss(nn.Module):
-    def __init__(self, label_smoothing, tgt_vocab_size, ignore_index=-100):
+    def __init__(self, label_smoothing, tgt_vocab_size, ignore_index=0):
         super(LabelSmoothingKLDivergenceLoss, self).__init__()
         self.confidence = 1.0 - label_smoothing
         self.label_smoothing = label_smoothing

@@ -17,10 +17,9 @@ def generate_masks(src, tgt, pad_idx):
     # unsqueeze function to add two dimensions, required for the subsequent
     # attention mechanism's broadcasting
     # shape : (batch_size, 1, tgt_len, 1)
-    tgt_mask = (tgt != pad_idx).unsqueeze(1).unsqueeze(3)
-
+    
     tgt_len = tgt.size(1)
-
+    tgt_padding_mask = (tgt != pad_idx).unsqueeze(1).unsqueeze(3)
    
     # Creating the upper triangle to prevend the decoder to visualize future tokens in the target sequnce
 
@@ -38,7 +37,8 @@ def generate_masks(src, tgt, pad_idx):
     # tgt_mask = tgt_mask & bool_upper_triangular_expanded
 
     # In 1 line
-    tgt_mask = tgt_mask & torch.triu(torch.ones(tgt_len, tgt_len, device=tgt.device)).bool().unsqueeze(0).unsqueeze(0)
+    tgt_look_ahead_mask = torch.triu(torch.ones(tgt_len, tgt_len, device=tgt.device), diagonal=1).bool().unsqueeze(0).unsqueeze(0)
+    tgt_mask = tgt_padding_mask & tgt_look_ahead_mask.expand(tgt_padding_mask.size(0), -1, -1, -1)
 
     return src_mask, tgt_mask
 
@@ -89,6 +89,7 @@ def calculate_bleu(reference, hypothesis):
     smooth = SmoothingFunction().method4
     return sentence_bleu([reference], hypothesis, smoothing_function=smooth)
 
+
 def evaluate_model(model, data_loader, criterion, device, pad_idx):
     model.eval()
     total_loss = 0
@@ -118,7 +119,7 @@ def evaluate_metrics(model, data_loader, tgt_vocab, pad_idx, device):
             reference = [tgt_vocab.itos[token] for token in tgt if token not in (pad_idx, tgt_vocab.stoi['<sos>'], tgt_vocab.stoi['<eos>'])]
             bleu = calculate_bleu(reference, hypothesis)
             bleu_scores.append(bleu)
-
+    
     model.train()
     return sum(bleu_scores) / len(bleu_scores)
 

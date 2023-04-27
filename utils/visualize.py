@@ -1,8 +1,13 @@
 import matplotlib.pyplot as plt
 import torch
+import sys
+import os
+sys.path.insert(1, os.path.abspath(os.path.join(os.path.dirname( '..'))))
 from transformer_v2 import Transformer
-from utils.function_utils import preprocess_text, generate_masks
+from utils.function_utils import *
 import numpy as np
+import io
+from PIL import Image
 
 def plot_positional_encodings(encodings, outfile=None):
     plt.figure(figsize=(10, 10))
@@ -15,7 +20,7 @@ def plot_positional_encodings(encodings, outfile=None):
         plt.savefig(outfile)
     plt.show()
 
-def plot_attention_weights(attention, layer, head, outfile=None):
+def plot_attention_weights_layer_head(attention, layer, head, outfile=None, print_img = True):
     attention_data = attention[layer][0, head].cpu().detach().numpy()
 
     plt.figure(figsize=(8, 8))
@@ -26,25 +31,55 @@ def plot_attention_weights(attention, layer, head, outfile=None):
     plt.ylabel("Query Positions")
     if outfile is not None:
         plt.savefig(outfile)
-    plt.show()
+    if print_img:
+        plt.show()
+
+def plot_attention_weights_grid(attention):
+    num_layers = len(attention)
+    num_heads = attention[0].shape[1]
+
+    fig, axes = plt.subplots(num_layers, num_heads, figsize=(3*num_heads, 3*num_layers), sharex=True, sharey=True)
+
+    for layer in range(num_layers):
+        for head in range(num_heads):
+            attention_data = attention[layer][0, head].cpu().detach().numpy()
+            ax = axes[layer, head]
+            img = ax.imshow(attention_data, cmap='viridis', aspect='auto')
+            ax.set_title(f"L{layer+1}, H{head+1}")
+
+    fig.colorbar(img, ax=axes.ravel().tolist(), shrink=0.7)
+    fig.suptitle("Attention Weights (Layers and Heads)")
+    fig.text(0.5, 0.04, "Key Positions", ha="center", va="center")
+    fig.text(0.04, 0.5, "Query Positions", ha="center", va="center", rotation="vertical")
+
+    # Convert the plot to a NumPy array
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    buf.seek(0)
+    img = Image.open(buf)
+    img_array = np.array(img)
+    plt.close()
+
+    return img_array
+
 
 def view_attention_weights(model, src_text, tgt_text):
 
-    src = preprocess_text(src_text)
-    tgt = preprocess_text(tgt_text)
+    src = src_text
+    tgt = tgt_text
     src_mask, tgt_mask = generate_masks(src, tgt)
     with torch.no_grad():
         _, enc_attention_weights, dec_self_attention_weights, dec_enc_attention_weights = model(src, tgt, src_mask, tgt_mask, return_attention=True)
     layer = 2
     head = 1
     outfile = f"enc_attention_weights_layer{layer}_head{head}.png"
-    plot_attention_weights(enc_attention_weights, layer, head, outfile)
+    plot_attention_weights_layer_head(enc_attention_weights, layer, head, outfile)
 
     outfile = f"dec_self_attention_weights_layer{layer}_head{head}.png"
-    plot_attention_weights(dec_self_attention_weights, layer, head, outfile)
+    plot_attention_weights_layer_head(dec_self_attention_weights, layer, head, outfile)
 
     outfile = f"dec_enc_attention_weights_layer{layer}_head{head}.png"
-    plot_attention_weights(dec_enc_attention_weights, layer, head, outfile)
+    plot_attention_weights_layer_head(dec_enc_attention_weights, layer, head, outfile)
 
 def plot_learning_rate_decay(scheduler, num_steps, outfile=None):
     learning_rates = []
