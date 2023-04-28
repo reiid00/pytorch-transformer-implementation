@@ -24,6 +24,21 @@ class NoamScheduler:
 
     def zero_grad(self):
         self.optimizer.zero_grad()
+    
+    def state_dict(self):
+        return {
+            'optimizer': self.optimizer.state_dict(),
+            'd_model': self.d_model,
+            'warmup_steps': self.warmup_steps,
+            'current_step': self.current_step,
+        }
+
+    def load_state_dict(self, state_dict):
+        self.optimizer.load_state_dict(state_dict['optimizer'])
+        self.d_model = state_dict['d_model']
+        self.warmup_steps = state_dict['warmup_steps']
+        self.current_step = state_dict['current_step']
+    
 
 def create_optimizer_and_scheduler(model, d_model, warmup_steps, init_lr, weight_decay=0.0, original=False):
     # Not original Adam Optimizer

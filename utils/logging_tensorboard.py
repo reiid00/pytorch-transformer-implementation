@@ -15,6 +15,6 @@ def log_gradients(writer, model, global_step):
         if param.grad is not None:
             writer.add_histogram(f"Gradients/{name}", param.grad, global_step)
 
-def log_attention_weights(writer, attention, global_step):
-    img_array = plot_attention_weights_grid(attention)
+def log_attention_weights(writer, attention, n_layers, n_heads, global_step):
+    img_array = plot_attention_weights_grid(attention,n_layers, n_heads)
     writer.add_image("Attention Weights Grid", img_array, global_step, dataformats="HWC")

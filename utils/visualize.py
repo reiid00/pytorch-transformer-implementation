@@ -34,34 +34,36 @@ def plot_attention_weights_layer_head(attention, layer, head, outfile=None, prin
     if print_img:
         plt.show()
 
-def plot_attention_weights_grid(attention):
-    num_layers = len(attention)
-    num_heads = attention[0].shape[1]
+def plot_attention_weights_grid(attention_weights, n_layers, n_heads):
+    num_layers = n_layers
+    num_heads = n_heads
 
-    fig, axes = plt.subplots(num_layers, num_heads, figsize=(3*num_heads, 3*num_layers), sharex=True, sharey=True)
+    grids = ['encoder', 'decoder_self', 'decoder_enc_dec']
+    grid_titles = ['Encoder Attention Weights', 'Decoder Self-Attention Weights', 'Decoder Cross-Attention Weights']
 
-    for layer in range(num_layers):
-        for head in range(num_heads):
-            attention_data = attention[layer][0, head].cpu().detach().numpy()
-            ax = axes[layer, head]
-            img = ax.imshow(attention_data, cmap='viridis', aspect='auto')
-            ax.set_title(f"L{layer+1}, H{head+1}")
+    for grid_idx, grid in enumerate(grids):
+        fig, axes = plt.subplots(num_layers, num_heads, figsize=(3*num_heads, 3*num_layers), sharex=True, sharey=True)
 
-    fig.colorbar(img, ax=axes.ravel().tolist(), shrink=0.7)
-    fig.suptitle("Attention Weights (Layers and Heads)")
-    fig.text(0.5, 0.04, "Key Positions", ha="center", va="center")
-    fig.text(0.04, 0.5, "Query Positions", ha="center", va="center", rotation="vertical")
+        for layer in range(num_layers):
+            for head in range(num_heads):
+                attention_data = attention_weights[grid][layer][0, head].cpu().detach().numpy()
+                ax = axes[layer, head]
+                img = ax.imshow(attention_data, cmap='viridis', aspect='auto')
+                ax.set_title(f"L{layer+1}, H{head+1}")
 
-    # Convert the plot to a NumPy array
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight')
-    buf.seek(0)
-    img = Image.open(buf)
-    img_array = np.array(img)
-    plt.close()
+        fig.colorbar(img, ax=axes.ravel().tolist(), shrink=0.7)
+        fig.suptitle(grid_titles[grid_idx])
+        fig.text(0.5, 0.04, "Key Positions", ha="center", va="center")
+        fig.text(0.04, 0.5, "Query Positions", ha="center", va="center", rotation="vertical")
+
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight')
+        buf.seek(0)
+        img = Image.open(buf)
+        img_array = np.array(img)
+        plt.close()
 
     return img_array
-
 
 def view_attention_weights(model, src_text, tgt_text):
 
