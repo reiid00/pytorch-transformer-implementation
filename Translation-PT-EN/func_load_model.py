@@ -6,6 +6,7 @@ from tokenizers import ByteLevelBPETokenizer
 import os
 from torch.nn.utils.rnn import pad_sequence
 import torch
+from functools import partial
 
 FILE_PATH = 'data/en-pt.txt'
 NUM_PHRASES = 1_000_000
@@ -138,21 +139,22 @@ def create_dataloader(dataset, batch_size,tokenizer, shuffle=True, num_workers=0
     Returns:
         A DataLoader object.
     """
-    def collate_fn(batch):
+    
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+        collate_fn=partial(collate_fn, tokenizer=tokenizer),
+        pin_memory=True
+    )
+
+    return dataloader
+
+def collate_fn(batch, tokenizer):
         src_tensors, tgt_tensors = zip(*batch)
         src_tensors = [torch.tensor(src) for src in src_tensors]
         tgt_tensors = [torch.tensor(tgt) for tgt in tgt_tensors]
         src_tensors = pad_sequence(src_tensors, batch_first=True, padding_value=tokenizer.token_to_id("<pad>"))
         tgt_tensors = pad_sequence(tgt_tensors, batch_first=True, padding_value=tokenizer.token_to_id("<pad>"))
         return src_tensors, tgt_tensors
-
-    dataloader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=shuffle,
-        num_workers=num_workers,
-        collate_fn=collate_fn,
-        pin_memory=True
-    )
-
-    return dataloader
