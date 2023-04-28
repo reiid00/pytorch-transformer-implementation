@@ -99,24 +99,24 @@ def evaluate_model(model, data_loader, criterion, device, pad_idx):
             src, tgt = src.to(device), tgt.to(device)
             src_mask, tgt_mask = generate_masks(src, tgt, pad_idx)
 
-            output = model(src, tgt[:, :-1], src_mask, tgt_mask[:, :-1, :-1])
-            loss = criterion(output, tgt[:, 1:])
-            total_loss += loss.item() * (tgt[:, 1:] != pad_idx).sum().item()
-            total_tokens += (tgt[:, 1:] != pad_idx).sum().item()
+            output = model(src, tgt, src_mask, tgt_mask)
+            _, loss = criterion(output, tgt)
+            total_loss += loss * (tgt != pad_idx).sum().item()
+            total_tokens += (tgt != pad_idx).sum().item()
 
     model.train()
     return total_loss / total_tokens
 
-def evaluate_metrics(model, data_loader, tgt_vocab, pad_idx, device):
+def evaluate_metrics(model, data_loader, pad_idx, tokenizer, device):
     model.eval()
     bleu_scores = []
     with torch.no_grad():
         for src, tgt in data_loader:
             src, tgt = src.to(device), tgt.to(device)
-            src_mask = generate_masks(src, pad_idx)
+            src_mask, _ = generate_masks(src, tgt, pad_idx)
             output = model.generate(src, src_mask)
-            hypothesis = [tgt_vocab.itos[token] for token in output if token not in (pad_idx, tgt_vocab.stoi['<sos>'], tgt_vocab.stoi['<eos>'])]
-            reference = [tgt_vocab.itos[token] for token in tgt if token not in (pad_idx, tgt_vocab.stoi['<sos>'], tgt_vocab.stoi['<eos>'])]
+            hypothesis = [tokenizer.token_to_id(token) for token in output if token not in (pad_idx, tokenizer.token_to_id('<s>'), tokenizer.token_to_id('</s>'))]
+            reference = [tokenizer.token_to_id(token) for token in tgt if token not in (pad_idx, tokenizer.token_to_id('<s>'), tokenizer.token_to_id('</s>'))]
             bleu = calculate_bleu(reference, hypothesis)
             bleu_scores.append(bleu)
     
