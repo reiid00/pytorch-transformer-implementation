@@ -31,9 +31,9 @@ class Transformer(nn.Module):
             
     @property
     def attention_weights(self):
-        encoder_weights = [layer.self_attn.attention_weights for layer in self.encoder.layers]
-        decoder_self_weights = [layer.self_attn.attention_weights for layer in self.decoder.layers]
-        decoder_enc_dec_weights = [layer.enc_dec_attn.attention_weights for layer in self.decoder.layers]
+        encoder_weights = [layer.self_attn.attention_weights for layer in self.encoder_layers]
+        decoder_self_weights = [layer.self_attn.attention_weights for layer in self.decoder_layers]
+        decoder_enc_dec_weights = [layer.enc_dec_attn.attention_weights for layer in self.decoder_layers]
         
         return {"encoder": encoder_weights,
                 "decoder_self": decoder_self_weights,
