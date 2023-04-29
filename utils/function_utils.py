@@ -42,6 +42,45 @@ def generate_masks(src, tgt, pad_idx):
 
     return src_mask, tgt_mask
 
+def generate_masks_new(src, tgt, src_pad_idx, tgt_pad_idx):
+
+    # masking for the src
+    # Used to prevent the model (encoder) from attending to padding tokens
+    # unsqueeze function to add two dimensions, required for the subsequent
+    # attention mechanism's broadcasting
+    # shape : (batch_size, 1, 1, src_len)
+    src_mask = (src != src_pad_idx).unsqueeze(1).unsqueeze(2)
+
+    # masking for the target
+    # Used to prevent the model (decoder) from attending to padding tokens and future tokens
+    # unsqueeze function to add two dimensions, required for the subsequent
+    # attention mechanism's broadcasting
+    # shape : (batch_size, 1, tgt_len, 1)
+    
+    tgt_len = tgt.size(1)
+    tgt_padding_mask = (tgt != tgt_pad_idx).unsqueeze(1).unsqueeze(3)
+   
+    # Creating the upper triangle to prevend the decoder to visualize future tokens in the target sequnce
+
+    # multiple lines
+
+    # Create a square matrix filled with ones, of shape (tgt_len, tgt_len)
+    # ones_matrix = torch.ones(tgt_len, tgt_len, device=tgt.device)
+    # Create an upper triangular matrix filled with ones and zeros
+    # upper_triangular = torch.triu(ones_matrix)
+    # Convert the upper triangular matrix to a boolean tensor
+    # bool_upper_triangular = upper_triangular.bool()
+    # Add two dimensions to the boolean tensor, resulting in a shape of (1, 1, tgt_len, tgt_len)
+    # bool_upper_triangular_expanded = bool_upper_triangular.unsqueeze(0).unsqueeze(0)
+    # Perform a logical AND operation between tgt_mask and the expanded boolean tensor
+    # tgt_mask = tgt_mask & bool_upper_triangular_expanded
+
+    # In 1 line
+    tgt_look_ahead_mask = torch.triu(torch.ones(tgt_len, tgt_len, device=tgt.device), diagonal=1).bool().unsqueeze(0).unsqueeze(0)
+    tgt_mask = tgt_padding_mask & tgt_look_ahead_mask.expand(tgt_padding_mask.size(0), -1, -1, -1)
+
+    return src_mask, tgt_mask
+
 def batch_to_tensor(batch, pad_idx, device):
     # Max length of sequences in the batch
     max_len = max([len(x) for x in batch])
@@ -90,19 +129,19 @@ def calculate_bleu(reference, hypothesis):
     return sentence_bleu([reference], hypothesis, smoothing_function=smooth)
 
 
-def evaluate_model(model, data_loader, criterion, device, pad_idx):
+def evaluate_model(model, data_loader, criterion, device, src_pad_idx, tgt_pad_idx):
     model.eval()
     total_loss = 0
     total_tokens = 0
     with torch.no_grad():
         for src, tgt in data_loader:
             src, tgt = src.to(device), tgt.to(device)
-            src_mask, tgt_mask = generate_masks(src, tgt, pad_idx)
+            src_mask, tgt_mask = generate_masks_new(src, tgt, src_pad_idx, tgt_pad_idx)
 
             output = model(src, tgt, src_mask, tgt_mask)
             _, loss = criterion(output, tgt)
-            total_loss += loss * (tgt != pad_idx).sum().item()
-            total_tokens += (tgt != pad_idx).sum().item()
+            total_loss += loss * (tgt != tgt_pad_idx).sum().item()
+            total_tokens += (tgt != tgt_pad_idx).sum().item()
 
     model.train()
     return total_loss / total_tokens
