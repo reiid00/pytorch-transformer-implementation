@@ -81,6 +81,17 @@ def generate_masks_new(src, tgt, src_pad_idx, tgt_pad_idx):
 
     return src_mask, tgt_mask
 
+def generate_src_mask(src, src_pad_idx):
+    return (src != src_pad_idx).unsqueeze(1).unsqueeze(2)
+
+def generate_tgt_mask(tgt, tgt_pad_idx):
+    tgt_len = tgt.size(1)
+    tgt_padding_mask = (tgt != tgt_pad_idx).unsqueeze(1).unsqueeze(3)
+    tgt_look_ahead_mask = torch.triu(torch.ones(tgt_len, tgt_len, device=tgt.device), diagonal=1).bool().unsqueeze(0).unsqueeze(0)
+    tgt_mask = tgt_padding_mask & tgt_look_ahead_mask.expand(tgt_padding_mask.size(0), -1, -1, -1)
+
+    return tgt_mask
+
 def batch_to_tensor(batch, pad_idx, device):
     # Max length of sequences in the batch
     max_len = max([len(x) for x in batch])
@@ -103,13 +114,14 @@ def save_checkpoint(model, optimizer, scheduler, epoch, path):
         'epoch': epoch,
     }, path)
 
+
 def load_checkpoint(model, optimizer, scheduler, path):
     checkpoint = torch.load(path)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
     epoch = checkpoint['epoch']
-    return epoch
+    return model, optimizer, scheduler, epoch
 
 
 def get_training_state(training_config):

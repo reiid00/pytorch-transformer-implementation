@@ -74,7 +74,7 @@ def collate_fn(batch, pad_idx_src, pad_idx_tgt):
     return src_tensors, tgt_tensors
 
 
-def load_data(dataset_path, language_direction = LanguageDirection.PT2EN.name, limit = 1_000_000, batch_size = 32, max_len = 256):
+def load_data(dataset_path, language_direction = LanguageDirection.PT2EN.name, limit = 1_000_000, batch_size = 32, max_len = 256, return_tokenizers = False):
     language_direction = LanguageDirection[language_direction]
 
     sentence_pairs = load_dataset(dataset_path, language_direction, limit=limit)
@@ -132,7 +132,8 @@ def load_data(dataset_path, language_direction = LanguageDirection.PT2EN.name, l
     # Create DataLoaders for the training and testing sets
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=partial(collate_fn, pad_idx_src=pad_idx_src, pad_idx_tgt=pad_idx_tgt))
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=partial(collate_fn, pad_idx_src=pad_idx_src, pad_idx_tgt=pad_idx_tgt))
-
+    if return_tokenizers:
+        return train_dataloader, test_dataloader, pad_idx_src, pad_idx_tgt, src_vocab, tgt_vocab, src_tokenizer, tgt_tokenizer
     return train_dataloader, test_dataloader, pad_idx_src, pad_idx_tgt, src_vocab, tgt_vocab
 
 
